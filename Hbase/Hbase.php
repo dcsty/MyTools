@@ -34,6 +34,8 @@ class Hbase{
     private $transport = false;
     private $resData = [];
     private $scannerId = 0;
+    private $maxTime = 0;
+    private $minTime = 0;
 
     /**
      * Hbase constructor.
@@ -85,6 +87,14 @@ class Hbase{
         $this->family = $family;
     }
 
+    public function setMaxTime($maxTime){
+        $this->maxTime = $maxTime;
+    }
+
+    public function setMintime($minTime){
+        $this->minTime = $minTime;
+    }
+
     /**
      * @name 打开hbase连接池
      */
@@ -112,6 +122,13 @@ class Hbase{
         if( !empty($this->columns) ){
             $scan->columns = $this->columns;
         }
+        if( !empty($this->maxTime) && !empty($this->minTime) ){
+            $timeRange = new \TTimeRange();
+            $timeRange->minStamp = ($this->minTime - 1) * 1000;
+            $timeRange->maxStamp = ($this->maxTime + 1) * 1000;
+            $scan->timeRange = $timeRange;
+        }
+
         $this->scannerId = $this->client->openScanner($this->tableName,$scan);
         $scanRets = $this->client->getScannerRows($this->scannerId, $this->defaultSize);
         foreach($scanRets as $scanRet)
@@ -119,10 +136,7 @@ class Hbase{
             if( !empty($scanRet->columnValues) ){
                 foreach ($scanRet->columnValues as $value){
                     $value = (array) $value;
-                    $this->resData[$scanRet->row][] = [
-                        'key'       =>  $value['qualifier'],
-                        'value'     =>  $value['value']
-                    ];
+                    $this->resData[$scanRet->row][$value['qualifier']] = $value['value'];
                 }
             }
         }
@@ -143,6 +157,14 @@ class Hbase{
         if( !empty($this->columns) ){
             $scan->columns = $this->columns;
         }
+
+        if( !empty($this->maxTime) && !empty($this->minTime) ){
+            $timeRange = new \TTimeRange();
+            $timeRange->minStamp = ($this->minTime - 1) * 1000;
+            $timeRange->maxStamp = ($this->maxTime + 1) * 1000;
+            $scan->timeRange = $timeRange;
+        }
+
         $this->scannerId = $this->client->openScanner($this->tableName,$scan);
         $scanRets = $this->client->getScannerRows($this->scannerId, $this->defaultSize);
         foreach($scanRets as $scanRet)
@@ -150,10 +172,7 @@ class Hbase{
             if( !empty($scanRet->columnValues) ){
                 foreach ($scanRet->columnValues as $value){
                     $value = (array) $value;
-                    $this->resData[$scanRet->row][] = [
-                        'key'       =>  $value['qualifier'],
-                        'value'     =>  $value['value']
-                    ];
+                    $this->resData[$scanRet->row][$value['qualifier']] = $value['value'];
                 }
             }
         }
@@ -170,14 +189,18 @@ class Hbase{
         if( !empty($this->columns) ){
             $get->columns = $this->columns;
         }
+        if( !empty($this->maxTime) && !empty($this->minTime) ){
+            $timeRange = new \TTimeRange();
+            $timeRange->minStamp = ($this->minTime - 1) * 1000;
+            $timeRange->maxStamp = ($this->maxTime + 1) * 1000;
+            $get->timeRange = $timeRange;
+        }
+
         $arr = $this->client->get($this->tableName, $get);
         $results = $arr->columnValues;
         foreach($results as $result)
         {
-            $this->resData[$filter][] = [
-                'key'       =>  (string) $result->qualifier,
-                'value'     =>  (string) $result->value
-            ];
+            $this->resData[$filter][$result->qualifier] = $result->value;
         }
         return $this->resData;
     }
