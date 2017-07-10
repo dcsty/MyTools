@@ -36,6 +36,7 @@ class Hbase{
     private $scannerId = 0;
     private $maxTime = 0;
     private $minTime = 0;
+    private $columnFilter = [];
 
     /**
      * Hbase constructor.
@@ -43,7 +44,7 @@ class Hbase{
      */
     public function __construct()
     {
-        $this->hbaseConf = include_once "hbase.config.php";
+        $this->hbaseConf = include "hbase.config.php";
         $this->openClient();
     }
 
@@ -87,12 +88,23 @@ class Hbase{
         $this->family = $family;
     }
 
+    /**
+     * @name 设置最大时间
+     * @param $maxTime
+     */
     public function setMaxTime($maxTime){
         $this->maxTime = $maxTime;
     }
-
+    /**
+     * @name 设置最小时间
+     * @param $maxTime
+     */
     public function setMintime($minTime){
         $this->minTime = $minTime;
+    }
+
+    public function setColumnFilter( array $filter){
+        $this->columnFilter = $filter;
     }
 
     /**
@@ -160,9 +172,13 @@ class Hbase{
 
         if( !empty($this->maxTime) && !empty($this->minTime) ){
             $timeRange = new \TTimeRange();
-            $timeRange->minStamp = ($this->minTime - 1) * 1000;
-            $timeRange->maxStamp = ($this->maxTime + 1) * 1000;
+            $timeRange->maxStamp = ($this->maxTime) * 1000;
+            $timeRange->minStamp = ($this->minTime) * 1000;
             $scan->timeRange = $timeRange;
+        }
+
+        if(!empty($this->columnFilter)){
+            $scan->filterString = "MultipleColumnPrefixFilter('".implode("','",$this->columnFilter)."')";
         }
 
         $this->scannerId = $this->client->openScanner($this->tableName,$scan);
